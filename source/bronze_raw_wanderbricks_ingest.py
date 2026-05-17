@@ -1,4 +1,8 @@
 # Databricks notebook source
+# /// script
+# [tool.databricks.environment]
+# environment_version = "5"
+# ///
 # MAGIC %md
 # MAGIC # Wanderbricks Data Ingestion to Bronze Layer
 # MAGIC
@@ -54,128 +58,66 @@ spark.sql(f"CREATE SCHEMA IF NOT EXISTS {catalog_name}.bronze_raw")
 
 # COMMAND ----------
 
-# DBTITLE 1,Ingest amenities
-df = spark.table("samples.wanderbricks.amenities")
-row_count = df.count()
-df.write.mode("overwrite").saveAsTable(f"{catalog_name}.bronze_raw.wanderbricks_amenities")
-print(f"Ingested amenities: {row_count} rows")
+# DBTITLE 1,Define ingestion function
+from common.table_utils import get_source_table, get_target_table
+
+def ingest_table(table_name):
+    """
+    Ingest a table from samples.wanderbricks into the bronze layer.
+    
+    Args:
+        table_name: Name of the table in samples.wanderbricks schema
+    
+    Returns:
+        int: Number of rows ingested
+    """
+    source_table = get_source_table("wanderbricks", table_name)
+    target_table = get_target_table(catalog_name, "bronze_raw", "wanderbricks", table_name)
+    
+    # Read from source using SQL
+    df = spark.sql(f"SELECT * FROM {source_table}")
+    row_count = df.count()
+    
+    # Write to target
+    df.write.mode("overwrite").saveAsTable(target_table)
+    
+    return row_count
 
 # COMMAND ----------
 
-# DBTITLE 1,Ingest booking_updates
-df = spark.table("samples.wanderbricks.booking_updates")
-row_count = df.count()
-df.write.mode("overwrite").saveAsTable(f"{catalog_name}.bronze_raw.wanderbricks_booking_updates")
-print(f"Ingested booking_updates: {row_count} rows")
+# DBTITLE 1,Define table names array
+# Array of table names to ingest from samples.wanderbricks
+table_names = [
+    "amenities",
+    "booking_updates",
+    "bookings",
+    "clickstream",
+    "countries",
+    "customer_support_logs",
+    "destinations",
+    "employees",
+    "hosts",
+    "page_views",
+    "payments",
+    "properties",
+    "property_amenities",
+    "property_images",
+    "reviews",
+    "users"
+]
 
 # COMMAND ----------
 
-# DBTITLE 1,Ingest bookings
-df = spark.table("samples.wanderbricks.bookings")
-row_count = df.count()
-df.write.mode("overwrite").saveAsTable(f"{catalog_name}.bronze_raw.wanderbricks_bookings")
-print(f"Ingested bookings: {row_count} rows")
+# DBTITLE 1,Ingest all tables
+# Loop through each table and ingest
+for table_name in table_names:
+    row_count = ingest_table(table_name)
+    print(f"Ingested {table_name}: {row_count} rows")
+
+print(f"\nCompleted ingestion of {len(table_names)} tables from samples.wanderbricks to {catalog_name}.bronze_raw")
 
 # COMMAND ----------
 
-# DBTITLE 1,Ingest clickstream
-df = spark.table("samples.wanderbricks.clickstream")
-row_count = df.count()
-df.write.mode("overwrite").saveAsTable(f"{catalog_name}.bronze_raw.wanderbricks_clickstream")
-print(f"Ingested clickstream: {row_count} rows")
-
-# COMMAND ----------
-
-# DBTITLE 1,Ingest countries
-df = spark.table("samples.wanderbricks.countries")
-row_count = df.count()
-df.write.mode("overwrite").saveAsTable(f"{catalog_name}.bronze_raw.wanderbricks_countries")
-print(f"Ingested countries: {row_count} rows")
-
-# COMMAND ----------
-
-# DBTITLE 1,Ingest customer_support_logs
-df = spark.table("samples.wanderbricks.customer_support_logs")
-row_count = df.count()
-df.write.mode("overwrite").saveAsTable(f"{catalog_name}.bronze_raw.wanderbricks_customer_support_logs")
-print(f"Ingested customer_support_logs: {row_count} rows")
-
-# COMMAND ----------
-
-# DBTITLE 1,Ingest destinations
-df = spark.table("samples.wanderbricks.destinations")
-row_count = df.count()
-df.write.mode("overwrite").saveAsTable(f"{catalog_name}.bronze_raw.wanderbricks_destinations")
-print(f"Ingested destinations: {row_count} rows")
-
-# COMMAND ----------
-
-# DBTITLE 1,Ingest employees
-df = spark.table("samples.wanderbricks.employees")
-row_count = df.count()
-df.write.mode("overwrite").saveAsTable(f"{catalog_name}.bronze_raw.wanderbricks_employees")
-print(f"Ingested employees: {row_count} rows")
-
-# COMMAND ----------
-
-# DBTITLE 1,Ingest hosts
-df = spark.table("samples.wanderbricks.hosts")
-row_count = df.count()
-df.write.mode("overwrite").saveAsTable(f"{catalog_name}.bronze_raw.wanderbricks_hosts")
-print(f"Ingested hosts: {row_count} rows")
-
-# COMMAND ----------
-
-# DBTITLE 1,Ingest page_views
-df = spark.table("samples.wanderbricks.page_views")
-row_count = df.count()
-df.write.mode("overwrite").saveAsTable(f"{catalog_name}.bronze_raw.wanderbricks_page_views")
-print(f"Ingested page_views: {row_count} rows")
-
-# COMMAND ----------
-
-# DBTITLE 1,Ingest payments
-df = spark.table("samples.wanderbricks.payments")
-row_count = df.count()
-df.write.mode("overwrite").saveAsTable(f"{catalog_name}.bronze_raw.wanderbricks_payments")
-print(f"Ingested payments: {row_count} rows")
-
-# COMMAND ----------
-
-# DBTITLE 1,Ingest properties
-df = spark.table("samples.wanderbricks.properties")
-row_count = df.count()
-df.write.mode("overwrite").saveAsTable(f"{catalog_name}.bronze_raw.wanderbricks_properties")
-print(f"Ingested properties: {row_count} rows")
-
-# COMMAND ----------
-
-# DBTITLE 1,Ingest property_amenities
-df = spark.table("samples.wanderbricks.property_amenities")
-row_count = df.count()
-df.write.mode("overwrite").saveAsTable(f"{catalog_name}.bronze_raw.wanderbricks_property_amenities")
-print(f"Ingested property_amenities: {row_count} rows")
-
-# COMMAND ----------
-
-# DBTITLE 1,Ingest property_images
-df = spark.table("samples.wanderbricks.property_images")
-row_count = df.count()
-df.write.mode("overwrite").saveAsTable(f"{catalog_name}.bronze_raw.wanderbricks_property_images")
-print(f"Ingested property_images: {row_count} rows")
-
-# COMMAND ----------
-
-# DBTITLE 1,Ingest reviews
-df = spark.table("samples.wanderbricks.reviews")
-row_count = df.count()
-df.write.mode("overwrite").saveAsTable(f"{catalog_name}.bronze_raw.wanderbricks_reviews")
-print(f"Ingested reviews: {row_count} rows")
-
-# COMMAND ----------
-
-# DBTITLE 1,Ingest users
-df = spark.table("samples.wanderbricks.users")
-row_count = df.count()
-df.write.mode("overwrite").saveAsTable(f"{catalog_name}.bronze_raw.wanderbricks_users")
-print(f"Ingested users: {row_count} rows")
+# DBTITLE 1,Show all tables in bronze_raw
+# MAGIC %sql
+# MAGIC SHOW TABLES IN IDENTIFIER(:catalog_name).bronze_raw

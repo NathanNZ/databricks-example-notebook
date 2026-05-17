@@ -1,4 +1,8 @@
 # Databricks notebook source
+# /// script
+# [tool.databricks.environment]
+# environment_version = "5"
+# ///
 # MAGIC %md
 # MAGIC # Bakehouse Data Ingestion to Bronze Layer
 # MAGIC
@@ -46,48 +50,56 @@ spark.sql(f"CREATE SCHEMA IF NOT EXISTS {catalog_name}.bronze_raw")
 
 # COMMAND ----------
 
-# DBTITLE 1,Ingest media_customer_reviews
-df = spark.table("samples.bakehouse.media_customer_reviews")
-row_count = df.count()
-df.write.mode("overwrite").saveAsTable(f"{catalog_name}.bronze_raw.bakehouse_media_customer_reviews")
-print(f"Ingested media_customer_reviews: {row_count} rows")
+# DBTITLE 1,Define ingestion function
+from common.table_utils import get_source_table, get_target_table
+
+def ingest_table(table_name):
+    """
+    Ingest a table from samples.bakehouse into the bronze layer.
+    
+    Args:
+        table_name: Name of the table in samples.bakehouse schema
+    
+    Returns:
+        int: Number of rows ingested
+    """
+    source_table = get_source_table("bakehouse", table_name)
+    target_table = get_target_table(catalog_name, "bronze_raw", "bakehouse", table_name)
+    
+    # Read from source using spark.sql
+    df = spark.sql(f"SELECT * FROM {source_table}")
+    row_count = df.count()
+    
+    # Write to target
+    df.write.mode("overwrite").saveAsTable(target_table)
+    
+    return row_count
 
 # COMMAND ----------
 
-# DBTITLE 1,Ingest media_gold_reviews_chunked
-df = spark.table("samples.bakehouse.media_gold_reviews_chunked")
-row_count = df.count()
-df.write.mode("overwrite").saveAsTable(f"{catalog_name}.bronze_raw.bakehouse_media_gold_reviews_chunked")
-print(f"Ingested media_gold_reviews_chunked: {row_count} rows")
+# DBTITLE 1,Define table names array
+# Array of table names to ingest from samples.bakehouse
+table_names = [
+    "media_customer_reviews",
+    "media_gold_reviews_chunked",
+    "sales_customers",
+    "sales_franchises",
+    "sales_suppliers",
+    "sales_transactions"
+]
 
 # COMMAND ----------
 
-# DBTITLE 1,Ingest sales_customers
-df = spark.table("samples.bakehouse.sales_customers")
-row_count = df.count()
-df.write.mode("overwrite").saveAsTable(f"{catalog_name}.bronze_raw.bakehouse_sales_customers")
-print(f"Ingested sales_customers: {row_count} rows")
+# DBTITLE 1,Ingest all tables
+# Loop through each table and ingest
+for table_name in table_names:
+    row_count = ingest_table(table_name)
+    print(f"Ingested {table_name}: {row_count} rows")
+
+print(f"\nCompleted ingestion of {len(table_names)} tables from samples.bakehouse to {catalog_name}.bronze_raw")
 
 # COMMAND ----------
 
-# DBTITLE 1,Ingest sales_franchises
-df = spark.table("samples.bakehouse.sales_franchises")
-row_count = df.count()
-df.write.mode("overwrite").saveAsTable(f"{catalog_name}.bronze_raw.bakehouse_sales_franchises")
-print(f"Ingested sales_franchises: {row_count} rows")
-
-# COMMAND ----------
-
-# DBTITLE 1,Ingest sales_suppliers
-df = spark.table("samples.bakehouse.sales_suppliers")
-row_count = df.count()
-df.write.mode("overwrite").saveAsTable(f"{catalog_name}.bronze_raw.bakehouse_sales_suppliers")
-print(f"Ingested sales_suppliers: {row_count} rows")
-
-# COMMAND ----------
-
-# DBTITLE 1,Ingest sales_transactions
-df = spark.table("samples.bakehouse.sales_transactions")
-row_count = df.count()
-df.write.mode("overwrite").saveAsTable(f"{catalog_name}.bronze_raw.bakehouse_sales_transactions")
-print(f"Ingested sales_transactions: {row_count} rows")
+# DBTITLE 1,Show all tables in bronze_raw
+# MAGIC %sql
+# MAGIC SHOW TABLES IN IDENTIFIER(:catalog_name).bronze_raw
